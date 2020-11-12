@@ -11,5 +11,6 @@ The lockdown response to coronavirus disease 2019 (COVID-19) has caused an unpre
 
 ## Datasets:
 [Air quality data](https://openaq.org/#/locations?_k=ggbbh8)
+
 [COVID-19 Community Mobility Report Data](https://www.google.com/covid19/mobility/)
 
