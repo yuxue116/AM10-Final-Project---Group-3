@@ -9,3 +9,4 @@ Our group aim to estimate and visualize changes in air polluton in four cities w
 [Air quality data](https://openaq.org/#/locations?_k=ggbbh8)
 [COVID-19 Community Mobility Report Data](https://www.google.com/covid19/mobility/)
 
+You may also use this package that has lots of covid data https://kjhealy.github.io/covdata/index.html 
