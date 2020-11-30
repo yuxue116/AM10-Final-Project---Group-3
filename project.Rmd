@@ -1,0 +1,113 @@
+---
+title: "Group Project"
+author: "Kushal Kundanmal"
+date: "30/11/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(ggridges)
+library(gghalves)
+library(lubridate)
+library(gridExtra)
+library(sf)
+library(vroom)
+library(skimr)
+library(janitor)
+library(mice)
+```
+
+
+```{r}
+# first select mobility data for our target cities
+in_mob <-  vroom("2020_IN_Region_Mobility_Report.csv") %>% filter(sub_region_1=="Delhi")
+
+gb_mob <- vroom("2020_GB_Region_Mobility_Report.csv") %>% filter(sub_region_1=="Greater London")
+
+ch_mob <- vroom("2020_CH_Region_Mobility_Report.csv") %>% filter(sub_region_1=="Zurich")
+```
+
+```{r}
+# select only past 36 months
+london_air <- vroom("london-air-quality.csv") %>% 
+  mutate(date = ymd(date),
+         year = year(date)) %>% filter(date>=as.Date("2018-01-01"))
+
+delhi_air <- vroom("new-delhi us embassy, india-air-quality.csv") %>% 
+  mutate(date = ymd(date),
+         year = year(date)) %>% filter(date>=as.Date("2018-01-01"))
+
+wuhan_air <- vroom("wuhan-air-quality.csv") %>% 
+  mutate(date = ymd(date),
+         year = year(date)) %>% filter(date>=as.Date("2018-01-01"))
+
+zurich_air <- vroom("zurich-kaserne, switzerland-air-quality.csv") %>% 
+  mutate(date = ymd(date),
+         year = year(date)) %>% filter(date>=as.Date("2018-01-01"))
+
+```
+
+```{r}
+# describe the mobility data
+skim(gb_mob)
+
+skim(ch_mob)
+
+skim(in_mob)
+```
+
+```{r}
+# describe/view air quality data
+
+skim(london_air)
+
+skim(zurich_air)
+
+skim(wuhan_air)
+
+skim(delhi_air)
+
+```
+
+```{r}
+# check for dupes
+london_air%>%get_dupes(date)
+wuhan_air%>%get_dupes(date)
+zurich_air %>%get_dupes(date)
+delhi_air %>% get_dupes(date)
+
+# dupes in mobility?
+in_mob %>% get_dupes(date)
+ch_mob %>% get_dupes(date)
+gb_mob %>% get_dupes(date)
+
+# fix duplicates across sub regions by averaging the values
+in_mob_clean <- in_mob %>% group_by(date) %>% 
+  summarise(retail_and_recreation_percent_change_from_baseline=mean(retail_and_recreation_percent_change_from_baseline),
+                                        grocery_and_pharmacy_percent_change_from_baseline=mean(grocery_and_pharmacy_percent_change_from_baseline),
+                                        parks_percent_change_from_baseline=mean(parks_percent_change_from_baseline),
+                                        transit_stations_percent_change_from_baseline=mean(transit_stations_percent_change_from_baseline),
+                                        workplaces_percent_change_from_baseline=mean(workplaces_percent_change_from_baseline),
+                                        residential_percent_change_from_baseline=mean(residential_percent_change_from_baseline)) %>% ungroup()
+gb_mob_clean <- gb_mob %>% group_by(date) %>% 
+  summarise(retail_and_recreation_percent_change_from_baseline=mean(retail_and_recreation_percent_change_from_baseline),
+                                        grocery_and_pharmacy_percent_change_from_baseline=mean(grocery_and_pharmacy_percent_change_from_baseline),
+                                        parks_percent_change_from_baseline=mean(parks_percent_change_from_baseline),
+                                        transit_stations_percent_change_from_baseline=mean(transit_stations_percent_change_from_baseline),
+                                        workplaces_percent_change_from_baseline=mean(workplaces_percent_change_from_baseline),
+                                        residential_percent_change_from_baseline=mean(residential_percent_change_from_baseline)) %>% ungroup()
+
+```
+```{r}
+# lets look into missing data
+md.pattern(in_mob_clean,rotate.names = T)
+
+md.pattern(gb_mob_clean,rotate.names = T)
+```
+
+
