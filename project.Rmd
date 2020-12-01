@@ -108,6 +108,112 @@ gb_mob_clean <- gb_mob %>% group_by(date) %>%
 md.pattern(in_mob_clean,rotate.names = T)
 
 md.pattern(gb_mob_clean,rotate.names = T)
+
+md.pattern(ch_mob,rotate.names = T)
 ```
 
+```{r}
+# merge the mobility and air quality data
+lon_merged <- left_join(london_air,gb_mob_clean,by='date')
+
+del_merged <- left_join(delhi_air,in_mob_clean,by='date')
+
+zur_merged <- left_join(zurich_air,ch_mob,by='date')
+```
+
+
+```{r}
+# some visualizations
+lon_merged %>% ggplot(aes(x=date,y=pm25,color=year)) +
+  geom_smooth() +
+  geom_point()
+
+del_merged %>% ggplot(aes(x=date,y=pm25,color=year)) +
+  geom_smooth() +
+  geom_point()
+
+zur_merged %>% ggplot(aes(x=date,y=pm25,color=year)) +
+  geom_smooth() +
+  geom_point()
+
+wuhan_air %>% ggplot(aes(x=date,y=pm25,color=year)) +
+  geom_smooth() +
+  geom_point()
+
+```
+```{r}
+lon_long <- lon_merged %>% pivot_longer(cols=c(9:14),names_to="type",values_to="percent") %>% filter(date>=as.Date("2020-02-15"))
+lon_long %>% ggplot(aes(x=date,y=percent,color=type)) +
+  geom_smooth() +
+  #geom_point() +
+  NULL
+
+del_long <- del_merged %>% pivot_longer(cols=c(4:9),names_to="type",values_to="percent") %>% filter(date>=as.Date("2020-02-15"))
+del_long %>% ggplot(aes(x=date,y=percent,color=type)) +
+  geom_smooth()
+
+zur_long <- zur_merged %>% pivot_longer(cols=c(15:20),names_to="type",values_to="percent") %>% filter(date>=as.Date("2020-02-15"))
+zur_long %>% ggplot(aes(x=date,y=percent,color=type)) +
+  geom_smooth()
+
+```
+
+```{r}
+# plot pm2 vs workplace percent change
+del_pm2_averages <- del_merged %>% filter(year!=2020) %>% mutate(month=month(date),day=day(date)) %>% group_by(month,day) %>% summarise(base_pm25=mean(pm25))
+
+del_long <- del_long %>% mutate(month=month(date),day=day(date)) %>%
+  merge(.,del_pm2_averages,by=c("month","day")) %>%
+  mutate(per_change_pm25=(pm25-base_pm25)/base_pm25*100)
+
+del_long %>% 
+  filter(date>=as.Date("2020-05-01")) %>% 
+  ggplot(aes(y=per_change_pm25,x=percent)) +
+  geom_smooth() + facet_wrap(~type,scales = "free")
+
+
+lon_pm2_averages <- lon_merged %>% filter(year!=2020) %>% mutate(month=month(date),day=day(date)) %>% group_by(month,day) %>% summarise(base_pm25=mean(pm25))
+
+lon_long <- lon_long %>% mutate(month=month(date),day=day(date)) %>% merge(.,del_pm2_averages,by=c("month","day")) %>% mutate(per_change_pm25=(pm25-base_pm25)/base_pm25*100)
+lon_long %>% 
+  filter(date>=as.Date("2020-05-01")) %>% 
+  ggplot(aes(y=per_change_pm25,x=percent)) +
+  geom_smooth() + facet_wrap(~type,scales = "free")
+
+zur_pm2_averages <- zur_merged %>% filter(year!=2020) %>% mutate(month=month(date),day=day(date)) %>% group_by(month,day) %>% summarise(base_pm25=mean(pm25))
+zur_long <- zur_long %>% mutate(month=month(date),day=day(date)) %>% merge(.,del_pm2_averages,by=c("month","day")) %>% mutate(per_change_pm25=(pm25-base_pm25)/base_pm25*100)
+zur_long %>% 
+  filter(date>=as.Date("2020-05-01")) %>% 
+  ggplot(aes(y=per_change_pm25,x=percent)) +
+  geom_smooth() + facet_wrap(~type,scales = "free")
+
+
+```
+
+```{r}
+del_merged <- del_merged %>% mutate(month=month(date),day=day(date)) %>%
+  merge(.,del_pm2_averages,by=c("month","day")) %>%
+  mutate(per_change_pm25=(pm25-base_pm25)/base_pm25*100)
+del_merged %>% 
+  filter(date>=as.Date("2020-01-01")) %>%
+  ggplot(aes(y=per_change_pm25,x=date)) +
+  geom_smooth()
+
+lon_merged <- lon_merged %>% mutate(month=month(date),day=day(date)) %>%
+  merge(.,del_pm2_averages,by=c("month","day")) %>%
+  mutate(per_change_pm25=(pm25-base_pm25)/base_pm25*100)
+lon_merged %>% 
+  filter(date>=as.Date("2020-01-01")) %>%
+  ggplot(aes(y=per_change_pm25,x=date)) +
+  geom_smooth()
+
+
+zur_merged <- zur_merged %>% mutate(month=month(date),day=day(date)) %>%
+  merge(.,del_pm2_averages,by=c("month","day")) %>%
+  mutate(per_change_pm25=(pm25-base_pm25)/base_pm25*100)
+zur_merged %>% 
+  filter(date>=as.Date("2020-01-01")) %>%
+  ggplot(aes(y=per_change_pm25,x=date)) +
+  geom_smooth()
+```
 
