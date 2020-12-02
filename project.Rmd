@@ -38,7 +38,7 @@ london_air <- vroom("london-air-quality.csv") %>%
   mutate(date = ymd(date),
          year = year(date)) %>% filter(date>=as.Date("2018-01-01"))
 
-delhi_air <- vroom("new-delhi us embassy, india-air-quality.csv") %>% 
+delhi_air <- vroom("delhi-institute of tool engineering, wazirpur, delhi, delhi, india-air-quality.csv") %>% 
   mutate(date = ymd(date),
          year = year(date)) %>% filter(date>=as.Date("2018-01-01"))
 
@@ -148,7 +148,7 @@ lon_long %>% ggplot(aes(x=date,y=percent,color=type)) +
   #geom_point() +
   NULL
 
-del_long <- del_merged %>% pivot_longer(cols=c(4:9),names_to="type",values_to="percent") %>% filter(date>=as.Date("2020-02-15"))
+del_long <- del_merged %>% pivot_longer(cols=c(9:14),names_to="type",values_to="percent") %>% filter(date>=as.Date("2020-02-15"))
 del_long %>% ggplot(aes(x=date,y=percent,color=type)) +
   geom_smooth()
 
@@ -159,12 +159,45 @@ zur_long %>% ggplot(aes(x=date,y=percent,color=type)) +
 ```
 
 ```{r}
-# plot pm2 vs workplace percent change
+# attempt one at percent change
 del_pm2_averages <- del_merged %>% filter(year!=2020) %>% mutate(month=month(date),day=day(date)) %>% group_by(month,day) %>% summarise(base_pm25=mean(pm25))
 
 del_long <- del_long %>% mutate(month=month(date),day=day(date)) %>%
   merge(.,del_pm2_averages,by=c("month","day")) %>%
   mutate(per_change_pm25=(pm25-base_pm25)/base_pm25*100)
+
+lon_pm2_averages <- lon_merged %>% filter(year!=2020) %>% mutate(month=month(date),day=day(date)) %>% group_by(month,day) %>% summarise(base_pm25=mean(pm25))
+
+lon_long <- lon_long %>% mutate(month=month(date),day=day(date)) %>%
+  merge(.,del_pm2_averages,by=c("month","day")) %>%
+  mutate(per_change_pm25=(pm25-base_pm25)/base_pm25*100)
+
+zur_pm2_averages <- zur_merged %>% filter(year!=2020) %>%
+  mutate(month=month(date),day=day(date)) %>% group_by(month,day) %>% summarise(base_pm25=mean(pm25))
+zur_long <- zur_long %>% mutate(month=month(date),day=day(date)) %>%
+  merge(.,del_pm2_averages,by=c("month","day")) %>%
+  mutate(per_change_pm25=(pm25-base_pm25)/base_pm25*100)
+
+```
+
+
+```{r}
+# attempt 2
+del_merged2 <- del_merged %>% arrange(date) %>% mutate(prior_yr_pm25=lag(pm25,365),change_pm25=(pm25-prior_yr_pm25)/prior_yr_pm25*100)
+
+del_merged %>%  group_by(month(date),year(date)) %>% summarize(monthly_change=mean(change_pm25)) 
+
+# ggplot(aes(x=date,y=monthly_change)) +
+#   geom_point() +
+#   geom_smooth() +
+#   ylim(-100,1000)
+
+```
+
+
+
+```{r}
+# plot pm2 vs workplace percent change
 
 del_long %>% 
   filter(date>=as.Date("2020-05-01")) %>% 
@@ -172,16 +205,13 @@ del_long %>%
   geom_smooth() + facet_wrap(~type,scales = "free")
 
 
-lon_pm2_averages <- lon_merged %>% filter(year!=2020) %>% mutate(month=month(date),day=day(date)) %>% group_by(month,day) %>% summarise(base_pm25=mean(pm25))
 
-lon_long <- lon_long %>% mutate(month=month(date),day=day(date)) %>% merge(.,del_pm2_averages,by=c("month","day")) %>% mutate(per_change_pm25=(pm25-base_pm25)/base_pm25*100)
 lon_long %>% 
   filter(date>=as.Date("2020-05-01")) %>% 
   ggplot(aes(y=per_change_pm25,x=percent)) +
   geom_smooth() + facet_wrap(~type,scales = "free")
 
-zur_pm2_averages <- zur_merged %>% filter(year!=2020) %>% mutate(month=month(date),day=day(date)) %>% group_by(month,day) %>% summarise(base_pm25=mean(pm25))
-zur_long <- zur_long %>% mutate(month=month(date),day=day(date)) %>% merge(.,del_pm2_averages,by=c("month","day")) %>% mutate(per_change_pm25=(pm25-base_pm25)/base_pm25*100)
+
 zur_long %>% 
   filter(date>=as.Date("2020-05-01")) %>% 
   ggplot(aes(y=per_change_pm25,x=percent)) +
@@ -195,7 +225,7 @@ del_merged <- del_merged %>% mutate(month=month(date),day=day(date)) %>%
   merge(.,del_pm2_averages,by=c("month","day")) %>%
   mutate(per_change_pm25=(pm25-base_pm25)/base_pm25*100)
 del_merged %>% 
-  filter(date>=as.Date("2020-01-01")) %>%
+  #filter(date>=as.Date("2020-01-01")) %>%
   ggplot(aes(y=per_change_pm25,x=date)) +
   geom_smooth()
 
@@ -203,7 +233,7 @@ lon_merged <- lon_merged %>% mutate(month=month(date),day=day(date)) %>%
   merge(.,del_pm2_averages,by=c("month","day")) %>%
   mutate(per_change_pm25=(pm25-base_pm25)/base_pm25*100)
 lon_merged %>% 
-  filter(date>=as.Date("2020-01-01")) %>%
+  #filter(date>=as.Date("2020-01-01")) %>%
   ggplot(aes(y=per_change_pm25,x=date)) +
   geom_smooth()
 
@@ -212,8 +242,63 @@ zur_merged <- zur_merged %>% mutate(month=month(date),day=day(date)) %>%
   merge(.,del_pm2_averages,by=c("month","day")) %>%
   mutate(per_change_pm25=(pm25-base_pm25)/base_pm25*100)
 zur_merged %>% 
-  filter(date>=as.Date("2020-01-01")) %>%
+  #filter(date>=as.Date("2020-01-01")) %>%
   ggplot(aes(y=per_change_pm25,x=date)) +
+  geom_smooth()
+```
+```{r}
+m1 <- zur_merged %>% mutate(month=month(date)) %>% lm(pm25 ~ retail_and_recreation_percent_change_from_baseline+
+     grocery_and_pharmacy_percent_change_from_baseline+
+     transit_stations_percent_change_from_baseline+
+     retail_and_recreation_percent_change_from_baseline+
+     workplaces_percent_change_from_baseline+
+     residential_percent_change_from_baseline+
+       month,na.action=na.omit,data=.)
+
+summary(m1)
+```
+
+```{r}
+#maybe try with log prices
+library(caret)
+library(rpart.plot)
+control <- trainControl (
+    method="cv",
+    number=5,
+    verboseIter=TRUE)
+merged_nona <- del_merged %>% mutate(month=month(date))
+model2_tree <- train(
+  pm25 ~ retail_and_recreation_percent_change_from_baseline+
+     grocery_and_pharmacy_percent_change_from_baseline+
+     transit_stations_percent_change_from_baseline+
+     retail_and_recreation_percent_change_from_baseline+
+     workplaces_percent_change_from_baseline+
+     residential_percent_change_from_baseline+
+    month,
+  merged_nona,
+  method = "rpart",
+  na.action = na.omit,
+  trControl = control,
+  tuneLength=10
+    )
+
+#You can view how the tree performs
+model2_tree$results
+
+#You can view the final tree
+rpart.plot(model2_tree$finalModel)
+
+#you can also visualize the variable importance
+importance <- varImp(model2_tree, scale=TRUE)
+plot(importance)
+
+
+model2_tree$bestTune
+
+```
+```{r}
+ggplot(del_merged,aes(y=pm25,x=retail_and_recreation_percent_change_from_baseline)) +
+  geom_point() +
   geom_smooth()
 ```
 
