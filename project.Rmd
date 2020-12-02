@@ -67,10 +67,6 @@ delhi_air <- vroom("delhi-institute of tool engineering, wazirpur, delhi, delhi,
   mutate(date = ymd(date),
          year = year(date)) %>% filter(date>=as.Date("2018-01-01"))
 
-wuhan_air <- vroom("wuhan-air-quality.csv") %>% 
-  mutate(date = ymd(date),
-         year = year(date)) %>% filter(date>=as.Date("2018-01-01"))
-
 zurich_air <- vroom("zurich-kaserne, switzerland-air-quality.csv") %>% 
   mutate(date = ymd(date),
          year = year(date)) %>% filter(date>=as.Date("2018-01-01"))
@@ -93,8 +89,6 @@ skim(london_air)
 
 skim(zurich_air)
 
-skim(wuhan_air)
-
 skim(delhi_air)
 
 ```
@@ -102,7 +96,6 @@ skim(delhi_air)
 ```{r}
 # check for dupes
 london_air%>%get_dupes(date)
-wuhan_air%>%get_dupes(date)
 zurich_air %>%get_dupes(date)
 delhi_air %>% get_dupes(date)
 
@@ -125,9 +118,10 @@ gb_mob_clean <- gb_mob %>% group_by(date) %>%
                                         parks_percent_change_from_baseline=mean(parks_percent_change_from_baseline),
                                         transit_stations_percent_change_from_baseline=mean(transit_stations_percent_change_from_baseline),
                                         workplaces_percent_change_from_baseline=mean(workplaces_percent_change_from_baseline),
-                                        residential_percent_change_from_baseline=mean(residential_percent_change_from_baseline)) %>% ungroup()
+                                        residential_percent_change_from_baseline=mean(na.omit(residential_percent_change_from_baseline))) %>% ungroup()
 
 ```
+
 ```{r}
 # lets look into missing data
 md.pattern(in_mob_clean,rotate.names = T)
@@ -136,6 +130,16 @@ md.pattern(gb_mob_clean,rotate.names = T)
 
 md.pattern(ch_mob,rotate.names = T)
 ```
+
+```{r}
+md.pattern(delhi_air,rotate.names = T)
+
+md.pattern(london_air,rotate.names = T)
+
+md.pattern(zurich_air,rotate.names = T)
+
+```
+
 
 ```{r}
 # merge the mobility and air quality data
@@ -159,10 +163,6 @@ del_merged %>% ggplot(aes(x=date,y=pm25,color=year)) +
   geom_point()
 
 zur_merged %>% ggplot(aes(x=date,y=pm25,color=year)) +
-  geom_smooth() +
-  geom_point()
-
-wuhan_air %>% ggplot(aes(x=date,y=pm25,color=year)) +
   geom_smooth() +
   geom_point()
 
@@ -211,12 +211,9 @@ zur_long <- zur_long %>% mutate(month=month(date),day=day(date)) %>%
 # attempt 2
 del_merged2 <- del_merged %>% arrange(date) %>% mutate(prior_yr_pm25=lag(pm25,365),change_pm25=(pm25-prior_yr_pm25)/prior_yr_pm25*100)
 
-del_merged %>%  group_by(month(date),year(date)) %>% summarize(monthly_change=mean(change_pm25)) 
+lon_merged2 <- lon_merged %>% arrange(date) %>% mutate(prior_yr_pm25=lag(pm25,365),change_pm25=(pm25-prior_yr_pm25)/prior_yr_pm25*100)
 
-# ggplot(aes(x=date,y=monthly_change)) +
-#   geom_point() +
-#   geom_smooth() +
-#   ylim(-100,1000)
+zur_merged2 <- zur_merged %>% arrange(date) %>% mutate(prior_yr_pm25=lag(pm25,365),change_pm25=(pm25-prior_yr_pm25)/prior_yr_pm25*100)
 
 ```
 
@@ -224,80 +221,83 @@ del_merged %>%  group_by(month(date),year(date)) %>% summarize(monthly_change=me
 
 ```{r}
 # plot pm2 vs workplace percent change
-
-del_long %>% 
-  filter(date>=as.Date("2020-05-01")) %>% 
-  ggplot(aes(y=per_change_pm25,x=percent)) +
+del_long2 <- del_merged2 %>% pivot_longer(cols=c(9:14),names_to="type",values_to="percent") %>% filter(date>=as.Date("2020-02-15"))
+del_long2 %>% 
+  ggplot(aes(y=change_pm25,x=percent)) +
   geom_smooth() + facet_wrap(~type,scales = "free")
 
 
-
-lon_long %>% 
-  filter(date>=as.Date("2020-05-01")) %>% 
-  ggplot(aes(y=per_change_pm25,x=percent)) +
+lon_long2 <- lon_merged2 %>% pivot_longer(cols=c(9:14),names_to="type",values_to="percent") %>% filter(date>=as.Date("2020-02-15"))
+lon_long2 %>% 
+  ggplot(aes(y=change_pm25,x=percent)) +
   geom_smooth() + facet_wrap(~type,scales = "free")
 
-
-zur_long %>% 
-  filter(date>=as.Date("2020-05-01")) %>% 
-  ggplot(aes(y=per_change_pm25,x=percent)) +
+zur_long2 <- zur_merged2 %>% pivot_longer(cols=c(15:20),names_to="type",values_to="percent") %>% filter(date>=as.Date("2020-02-15"))
+zur_long2 %>% 
+  ggplot(aes(y=change_pm25,x=percent)) +
   geom_smooth() + facet_wrap(~type,scales = "free")
 
 
 ```
 
-```{r}
-del_merged <- del_merged %>% mutate(month=month(date),day=day(date)) %>%
-  merge(.,del_pm2_averages,by=c("month","day")) %>%
-  mutate(per_change_pm25=(pm25-base_pm25)/base_pm25*100)
-del_merged %>% 
-  #filter(date>=as.Date("2020-01-01")) %>%
-  ggplot(aes(y=per_change_pm25,x=date)) +
-  geom_smooth()
 
-lon_merged <- lon_merged %>% mutate(month=month(date),day=day(date)) %>%
-  merge(.,del_pm2_averages,by=c("month","day")) %>%
-  mutate(per_change_pm25=(pm25-base_pm25)/base_pm25*100)
-lon_merged %>% 
-  #filter(date>=as.Date("2020-01-01")) %>%
-  ggplot(aes(y=per_change_pm25,x=date)) +
-  geom_smooth()
-
-
-zur_merged <- zur_merged %>% mutate(month=month(date),day=day(date)) %>%
-  merge(.,del_pm2_averages,by=c("month","day")) %>%
-  mutate(per_change_pm25=(pm25-base_pm25)/base_pm25*100)
-zur_merged %>% 
-  #filter(date>=as.Date("2020-01-01")) %>%
-  ggplot(aes(y=per_change_pm25,x=date)) +
-  geom_smooth()
-```
-```{r}
-m1 <- zur_merged %>% mutate(month=month(date)) %>% lm(pm25 ~ retail_and_recreation_percent_change_from_baseline+
+```{r lm}
+#zurich
+m1 <- zur_merged %>% mutate(month=month(date)) %>% 
+  lm(pm25 ~ retail_and_recreation_percent_change_from_baseline+
      grocery_and_pharmacy_percent_change_from_baseline+
      transit_stations_percent_change_from_baseline+
-     retail_and_recreation_percent_change_from_baseline+
+     parks_percent_change_from_baseline+
      workplaces_percent_change_from_baseline+
      residential_percent_change_from_baseline+
        month,na.action=na.omit,data=.)
 
 summary(m1)
+
+#london
+m2 <- lon_merged %>% mutate(month=month(date)) %>% 
+  lm(pm25 ~ retail_and_recreation_percent_change_from_baseline+
+     grocery_and_pharmacy_percent_change_from_baseline+
+     transit_stations_percent_change_from_baseline+
+     parks_percent_change_from_baseline+
+     workplaces_percent_change_from_baseline+
+     residential_percent_change_from_baseline+
+       month,na.action=na.omit,data=.)
+
+summary(m2)
+
+#delhi
+m3 <- lon_merged %>% mutate(month=month(date)) %>% 
+  lm(pm25 ~ retail_and_recreation_percent_change_from_baseline+
+     grocery_and_pharmacy_percent_change_from_baseline+
+     transit_stations_percent_change_from_baseline+
+     parks_percent_change_from_baseline+
+     workplaces_percent_change_from_baseline+
+     residential_percent_change_from_baseline+
+       month,na.action=na.omit,data=.)
+
+summary(m3)
+
 ```
 
-```{r}
+```{r tree}
 #maybe try with log prices
 library(caret)
 library(rpart.plot)
+
+
+# delhi
+set.seed(1234)
 control <- trainControl (
     method="cv",
     number=5,
     verboseIter=TRUE)
 merged_nona <- del_merged %>% mutate(month=month(date))
-model2_tree <- train(
+tree_delhi <- train(
   pm25 ~ retail_and_recreation_percent_change_from_baseline+
      grocery_and_pharmacy_percent_change_from_baseline+
      transit_stations_percent_change_from_baseline+
-     retail_and_recreation_percent_change_from_baseline+
+     parks_percent_change_from_baseline+
      workplaces_percent_change_from_baseline+
      residential_percent_change_from_baseline+
     month,
@@ -309,22 +309,208 @@ model2_tree <- train(
     )
 
 #You can view how the tree performs
-model2_tree$results
+tree_delhi$results
 
 #You can view the final tree
-rpart.plot(model2_tree$finalModel)
+rpart.plot(tree_delhi$finalModel)
 
 #you can also visualize the variable importance
-importance <- varImp(model2_tree, scale=TRUE)
+importance <- varImp(tree_delhi, scale=TRUE)
+plot(importance)
+
+```
+
+```{r}
+
+# london
+set.seed(1234)
+control <- trainControl (
+    method="cv",
+    number=5,
+    verboseIter=TRUE)
+merged_nona <- lon_merged %>% mutate(month=month(date))
+md.pattern(merged_nona,rotate.names = T)
+
+tree_lon <- train(
+  pm25 ~ retail_and_recreation_percent_change_from_baseline+
+     grocery_and_pharmacy_percent_change_from_baseline+
+     transit_stations_percent_change_from_baseline+
+     parks_percent_change_from_baseline+  
+     workplaces_percent_change_from_baseline+
+     month+
+     residential_percent_change_from_baseline
+  ,
+  merged_nona,
+  method = "rpart",
+  na.action = na.omit,
+  trControl = control,
+  tuneLength=10
+    )
+
+#You can view how the tree performs
+tree_lon$results
+
+#You can view the final tree
+rpart.plot(tree_lon$finalModel)
+
+#you can also visualize the variable importance
+importance <- varImp(tree_lon, scale=TRUE)
 plot(importance)
 
 
-model2_tree$bestTune
+```
+
+```{r}
+# zurich
+set.seed(1234)
+control <- trainControl (
+    method="cv",
+    number=5,
+    verboseIter=TRUE)
+merged_nona <- zur_merged %>% mutate(month=month(date))
+tree_zur <- train(
+  pm25 ~ retail_and_recreation_percent_change_from_baseline+
+     grocery_and_pharmacy_percent_change_from_baseline+
+     transit_stations_percent_change_from_baseline+
+     parks_percent_change_from_baseline+
+     workplaces_percent_change_from_baseline+
+     residential_percent_change_from_baseline+
+    month,
+  merged_nona,
+  method = "rpart",
+  na.action = na.omit,
+  trControl = control,
+  tuneLength=10
+    )
+
+#You can view how the tree performs
+tree_zur$results
+
+#You can view the final tree
+rpart.plot(tree_zur$finalModel)
+
+#you can also visualize the variable importance
+importance <- varImp(tree_zur, scale=TRUE)
+plot(importance)
+
 
 ```
 ```{r}
-ggplot(del_merged,aes(y=pm25,x=retail_and_recreation_percent_change_from_baseline)) +
-  geom_point() +
-  geom_smooth()
+train_control <- trainControl (
+    method="cv",
+    number=5,
+    verboseIter=TRUE)
+
+library(GGally)
+merged_nona %>% ggcorr(layout.position="left")
+set.seed(1234)
+# Fit random forest: model
+merged_nona <- del_merged %>% mutate(month=month(date))
+rf_RF <- train(
+   no2 ~ retail_and_recreation_percent_change_from_baseline+
+     grocery_and_pharmacy_percent_change_from_baseline+
+     transit_stations_percent_change_from_baseline+
+     retail_and_recreation_percent_change_from_baseline+
+     workplaces_percent_change_from_baseline+
+     residential_percent_change_from_baseline+
+    month,
+  merged_nona, 
+  method = "ranger",
+  na.action = na.omit,
+   #metric="ROC",
+  trControl = train_control,
+  importance = 'permutation',
+  tuneLength=10
+)
+
+rf_RF$results
+
+rf_RF$bestTune
+
+importance <- varImp(rf_RF, scale=TRUE)
+importance
+varImps <- importance$importance %>% rownames_to_column()
+varImps %>% ggplot(aes(x=reorder(rowname,-Overall),y=Overall)) +
+  geom_col() +
+  scale_x_discrete(labels=c("Retail & Recreation","Month","Workplaces",
+                            "Residential","Grocery & Pharmacy","Transit Stations"))+
+  theme_minimal() +
+  labs(title="Delhi: Which Factors Effect PM25 The Most?",y="Feature Importance",x="Category")
 ```
+
+
+
+```{r rf}
+train_control <- trainControl (
+    method="cv",
+    number=5,
+    verboseIter=TRUE)
+
+merged_nona %>% ggcorr(layout.position="left")
+set.seed(1234)
+# Fit random forest: model
+merged_nona <- lon_merged %>% mutate(month=month(date))
+rf_RF <- train(
+   no2 ~ retail_and_recreation_percent_change_from_baseline+
+     grocery_and_pharmacy_percent_change_from_baseline+
+     transit_stations_percent_change_from_baseline+
+     retail_and_recreation_percent_change_from_baseline+
+     workplaces_percent_change_from_baseline+
+     residential_percent_change_from_baseline+
+    month,
+  merged_nona, 
+  method = "ranger",
+  na.action = na.omit,
+   #metric="ROC",
+  trControl = train_control,
+  importance = 'permutation',
+  tuneLength=10
+)
+
+rf_RF$results
+
+rf_RF$bestTune
+
+importance <- varImp(rf_RF, scale=TRUE)
+importance
+varImps <- importance$importance %>% rownames_to_column()
+varImps %>% ggplot(aes(x=reorder(rowname,-Overall),y=Overall)) +
+  geom_col() +
+  scale_x_discrete(labels=c("Retail & Recreation","Month","Workplaces",
+                            "Residential","Grocery & Pharmacy","Transit Stations"))+
+  theme_minimal() +
+  labs(title="London: Which Factors Effect PM25 The Most?",y="Weight",x="Category")
+```
+```{r}
+set.seed(1234)
+# Fit random forest: model
+
+merged_nona %>% ggcorr(layout.position="left")
+merged_nona <- zur_merged %>% mutate(month=month(date))
+rf_RF <- train(
+   no2 ~ retail_and_recreation_percent_change_from_baseline+
+     grocery_and_pharmacy_percent_change_from_baseline+
+     transit_stations_percent_change_from_baseline+
+     retail_and_recreation_percent_change_from_baseline+
+     workplaces_percent_change_from_baseline+
+     residential_percent_change_from_baseline+
+    month,
+  merged_nona, 
+  method = "ranger",
+  na.action = na.omit,
+   #metric="ROC",
+  trControl = train_control,
+  importance = 'permutation',
+  tuneLength=10
+)
+
+rf_RF$results
+
+rf_RF$bestTune
+
+importance <- varImp(rf_RF, scale=TRUE)
+plot(importance)
+```
+
+
 
