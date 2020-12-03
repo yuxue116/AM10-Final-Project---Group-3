@@ -14,3 +14,4 @@ The lockdown response to coronavirus disease 2019 (COVID-19) has caused an unpre
 
 [COVID-19 Community Mobility Report Data](https://www.google.com/covid19/mobility/)
 
+You may also use this package that has lots of covid data https://kjhealy.github.io/covdata/index.html 
