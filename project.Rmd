@@ -126,7 +126,7 @@ gb_mob_clean <- gb_mob %>% group_by(date) %>%
                                         parks_percent_change_from_baseline=mean(parks_percent_change_from_baseline),
                                         transit_stations_percent_change_from_baseline=mean(transit_stations_percent_change_from_baseline),
                                         workplaces_percent_change_from_baseline=mean(workplaces_percent_change_from_baseline),
-                                        residential_percent_change_from_baseline=mean(residential_percent_change_from_baseline)) %>% ungroup()
+                                        residential_percent_change_from_baseline=mean(na.omit(residential_percent_change_from_baseline))) %>% ungroup()
 
 ```
 ```{r}
@@ -190,7 +190,7 @@ plt3<- ggplot(zur_air1) +
   theme(strip.text.x = element_text(size = 16)) +
    theme(
          strip.text.x = element_text(),
-        strip.text.y = element_text()),
+        strip.text.y = element_text(),
         strip.background = element_rect(fill="#E1E1E1"))
 
 
@@ -205,12 +205,12 @@ plt1+plt2+plt3+
         plot.title = element_text(,        # Change text format
                                   face = "bold", 
                                   size = 18),
-        plot.subtitle = element_text(,
+        plot.subtitle = element_text(
                                      size = 16),
         axis.title.x = element_blank(),
-        axis.text.x = element_text(family = "Myanmar Text"),
-        axis.title.y = element_text(family = "Myanmar Text"),
-        axis.text.y = element_text(family = "Myanmar Text"),
+        axis.text.x = element_text(),
+        axis.title.y = element_text(),
+        axis.text.y = element_text(),
         aspect.ratio = 3/5)
 
 ```
@@ -228,8 +228,8 @@ plt4 <- ggplot(no2_merged) +
   theme_minimal()+
   theme(strip.text.x = element_text(size = 16)) +
 theme(legend.position = "none",
-         strip.text.x = element_text(family = "Myanmar Text"),
-        strip.text.y = element_text(family = "Myanmar Text"),
+         strip.text.x = element_text(),
+        strip.text.y = element_text(),
         strip.background = element_rect(fill="#E1E1E1"))
 
 lon_pm10 <- london_air %>% summarise(date=date,London=pm10)
@@ -245,8 +245,8 @@ plt5 <- ggplot(pm10_merged) +
   theme_minimal()+
   theme(strip.text.x = element_text(size = 16)) +
   theme( 
-         strip.text.x = element_text(family = "Myanmar Text"),
-        strip.text.y = element_text(family = "Myanmar Text"),
+         strip.text.x = element_text(),
+        strip.text.y = element_text(),
         strip.background = element_rect(fill="#E1E1E1"))
 
 lon_pm25 <- london_air %>% summarise(date=date,London=pm25)
@@ -262,8 +262,8 @@ plt6 <- ggplot(pm25_merged) +
   theme_minimal()+
   theme(strip.text.x = element_text(size = 16)) +
   theme(legend.position = "none",
-         strip.text.x = element_text(family = "Myanmar Text"),
-        strip.text.y = element_text(family = "Myanmar Text"),
+         strip.text.x = element_text(),
+        strip.text.y = element_text(),
         strip.background = element_rect(fill="#E1E1E1"))
 
 lon_so2 <- london_air %>% summarise(date=date,London=so2)
@@ -279,8 +279,8 @@ plt7 <- ggplot(so2_merged) +
   theme_minimal()+
   theme(strip.text.x = element_text(size = 16)) +
   theme(
-         strip.text.x = element_text(family = "Myanmar Text"),
-        strip.text.y = element_text(family = "Myanmar Text"),
+         strip.text.x = element_text(),
+        strip.text.y = element_text(),
         strip.background = element_rect(fill="#E1E1E1"))
 
 plt4+plt5+plt6+plt7+
@@ -296,15 +296,15 @@ plt4+plt5+plt6+plt7+
     plot.subtitle = element_text(size = 16, hjust = 0) 
     ) &
   theme(panel.background = element_rect(fill = NA,color="black"),               # Remove gridlines
-        plot.title = element_text(family = "Myanmar Text",        # Change text format
+        plot.title = element_text(,        # Change text format
                                   face = "bold", 
                                   size = 18),
-        plot.subtitle = element_text(family = "Myanmar Text",
+        plot.subtitle = element_text(,
                                      size = 16),
         axis.title.x = element_blank(),
-        axis.text.x = element_text(family = "Myanmar Text"),
-        axis.title.y = element_text(family = "Myanmar Text"),
-        axis.text.y = element_text(family = "Myanmar Text"),
+        axis.text.x = element_text(),
+        axis.title.y = element_text(),
+        axis.text.y = element_text(),
         aspect.ratio = 3/5)
 
 ```
@@ -365,8 +365,8 @@ plt8 <- ggplot(lon_mob) +
   theme(strip.text.x = element_text(size = 16)) +
   theme(legend.position = "none") +
    theme(
-         strip.text.x = element_text(family = "Myanmar Text"),
-        strip.text.y = element_text(family = "Myanmar Text"),
+         strip.text.x = element_text(),
+        strip.text.y = element_text(),
         strip.background = element_rect(fill="#E1E1E1"))
 
 del_mob <- del_long %>% mutate (city = "New Delhi")
@@ -379,8 +379,8 @@ plt9 <- ggplot(del_mob) +
   theme(strip.text.x = element_text(size = 16)) +
   theme(legend.position = "none") +
    theme(
-         strip.text.x = element_text(family = "Myanmar Text"),
-        strip.text.y = element_text(family = "Myanmar Text"),
+         strip.text.x = element_text(),
+        strip.text.y = element_text(),
         strip.background = element_rect(fill="#E1E1E1"))
 
 zur_mob <- zur_merged %>%
@@ -401,8 +401,8 @@ plt10 <- ggplot(zur_mob) +
   theme_minimal()+
   theme(strip.text.x = element_text(size = 16)) +
    theme(
-         strip.text.x = element_text(family = "Myanmar Text"),
-        strip.text.y = element_text(family = "Myanmar Text"),
+         strip.text.x = element_text( ),
+        strip.text.y = element_text( ),
         strip.background = element_rect(fill="#E1E1E1"))
 
 plt8+plt9+plt10+
@@ -410,15 +410,15 @@ plt8+plt9+plt10+
 
       theme(
   panel.background = element_rect(fill = NA,color="black"),               # Remove gridlines
-        plot.title = element_text(family = "Myanmar Text",        # Change text format
+        plot.title = element_text(         # Change text format
                                   face = "bold", 
                                   size = 18),
-        plot.subtitle = element_text(family = "Myanmar Text",
+        plot.subtitle = element_text( 
                                      size = 16),
         axis.title.x = element_blank(),
-        axis.text.x = element_text(family = "Myanmar Text"),
-        axis.title.y = element_text(family = "Myanmar Text"),
-        axis.text.y = element_text(family = "Myanmar Text"),
+        axis.text.x = element_text( ),
+        axis.title.y = element_text( ),
+        axis.text.y = element_text( ),
         aspect.ratio = 3/5)
 
 
