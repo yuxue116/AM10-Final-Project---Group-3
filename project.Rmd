@@ -43,6 +43,7 @@ library(vroom)
 library(skimr)
 library(janitor)
 library(mice)
+library(patchwork)
 ```
 
 # STEP 1 - EXPLORATORY ANALYSIS
@@ -64,6 +65,10 @@ london_air <- vroom("london-air-quality.csv") %>%
          year = year(date)) %>% filter(date>=as.Date("2018-01-01"))
 
 delhi_air <- vroom("delhi-institute of tool engineering, wazirpur, delhi, delhi, india-air-quality.csv") %>% 
+  mutate(date = ymd(date),
+         year = year(date)) %>% filter(date>=as.Date("2018-01-01"))
+
+wuhan_air <- vroom("wuhan-air-quality.csv") %>% 
   mutate(date = ymd(date),
          year = year(date)) %>% filter(date>=as.Date("2018-01-01"))
 
@@ -89,6 +94,8 @@ skim(london_air)
 
 skim(zurich_air)
 
+skim(wuhan_air)
+
 skim(delhi_air)
 
 ```
@@ -96,6 +103,7 @@ skim(delhi_air)
 ```{r}
 # check for dupes
 london_air%>%get_dupes(date)
+wuhan_air%>%get_dupes(date)
 zurich_air %>%get_dupes(date)
 delhi_air %>% get_dupes(date)
 
@@ -118,10 +126,9 @@ gb_mob_clean <- gb_mob %>% group_by(date) %>%
                                         parks_percent_change_from_baseline=mean(parks_percent_change_from_baseline),
                                         transit_stations_percent_change_from_baseline=mean(transit_stations_percent_change_from_baseline),
                                         workplaces_percent_change_from_baseline=mean(workplaces_percent_change_from_baseline),
-                                        residential_percent_change_from_baseline=mean(na.omit(residential_percent_change_from_baseline))) %>% ungroup()
+                                        residential_percent_change_from_baseline=mean(residential_percent_change_from_baseline)) %>% ungroup()
 
 ```
-
 ```{r}
 # lets look into missing data
 md.pattern(in_mob_clean,rotate.names = T)
@@ -130,16 +137,6 @@ md.pattern(gb_mob_clean,rotate.names = T)
 
 md.pattern(ch_mob,rotate.names = T)
 ```
-
-```{r}
-md.pattern(delhi_air,rotate.names = T)
-
-md.pattern(london_air,rotate.names = T)
-
-md.pattern(zurich_air,rotate.names = T)
-
-```
-
 
 ```{r}
 # merge the mobility and air quality data
@@ -152,39 +149,282 @@ zur_merged <- left_join(zurich_air,ch_mob,by='date')
 
 # Explorary Data Analysis
 
-```{r}
+```{r fig.height=5,fig.width=12,warning=FALSE,message=FALSE}
 # some visualizations
-lon_merged %>% ggplot(aes(x=date,y=pm25,color=year)) +
-  geom_smooth() +
-  geom_point()
+lon_air1 <- lon_merged %>% pivot_longer(cols=c(2:7),names_to="Pollutions",values_to="ugm")%>%
+  filter(Pollutions %in% c("pm25","pm10","no2","so2")) %>%mutate(city = "London")
+plt1<- ggplot(lon_air1) +
+  geom_smooth(aes(x=date,y=ugm,color=Pollutions)) +
+  labs(x="", y="Concentration (µg/m3)")+
+  facet_wrap(~ city) + 
+  theme_classic()+
+  theme(strip.text.x = element_text(size = 16)) +
+  theme(legend.position = "none",
+         strip.text.x = element_text(),
+        strip.text.y = element_text(),
+        strip.background = element_rect(fill="#E1E1E1"))
 
-del_merged %>% ggplot(aes(x=date,y=pm25,color=year)) +
-  geom_smooth() +
-  geom_point()
 
-zur_merged %>% ggplot(aes(x=date,y=pm25,color=year)) +
-  geom_smooth() +
-  geom_point()
+del_air1 <- del_merged %>% pivot_longer(cols=c(2:7),names_to="Pollutions",values_to="ugm")%>%
+  filter(Pollutions %in% c("pm25","pm10","no2","so2"))%>%mutate(city = "New Delhi")
+plt2<- ggplot(del_air1) +
+  geom_smooth(aes(x=date,y=ugm,color=Pollutions)) +
+  labs(x="", y="Concentration (µg/m3)")+
+  facet_wrap(~ city) + 
+  theme_classic()+
+  theme(strip.text.x = element_text(size = 16)) +
+  theme(legend.position = "none",
+         strip.text.x = element_text(),
+        strip.text.y = element_text(),
+        strip.background = element_rect(fill="#E1E1E1"))
+
+
+
+zur_air1 <- zur_merged %>% pivot_longer(cols=c(2:7),names_to="Pollutions",values_to="ugm")%>%
+  filter(Pollutions %in% c("pm25","pm10","no2","so2"))%>%mutate(city = "Zurich")
+plt3<- ggplot(zur_air1) +
+  geom_smooth(aes(x=date,y=ugm,color=Pollutions)) +
+  labs(x="", y="Concentration (µg/m3)") +
+  facet_wrap(~ city) + 
+  theme_classic()+  
+  theme(strip.text.x = element_text(size = 16)) +
+   theme(
+         strip.text.x = element_text(),
+        strip.text.y = element_text()),
+        strip.background = element_rect(fill="#E1E1E1"))
+
+
+plt1+plt2+plt3+
+  plot_annotation(title = "Air pollutant concentrations reached their lowest points in three years in July 2020",subtitle = "Air quality data of London, New Delhi and Zürich over the past three years",caption="Aqicn.org") &
+    theme(
+    plot.title = element_text(face = "bold", size = 20, hjust = 0), 
+  #hjust is to adjust the position of the title
+    plot.subtitle = element_text(size = 16, hjust = 0) 
+    ) &
+  theme(panel.background = element_rect(fill = NA,color="black"),               # Remove gridlines
+        plot.title = element_text(,        # Change text format
+                                  face = "bold", 
+                                  size = 18),
+        plot.subtitle = element_text(,
+                                     size = 16),
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(family = "Myanmar Text"),
+        axis.title.y = element_text(family = "Myanmar Text"),
+        axis.text.y = element_text(family = "Myanmar Text"),
+        aspect.ratio = 3/5)
 
 ```
-```{r}
-lon_long <- lon_merged %>% pivot_longer(cols=c(9:14),names_to="type",values_to="percent") %>% filter(date>=as.Date("2020-02-15"))
-lon_long %>% ggplot(aes(x=date,y=percent,color=type)) +
-  geom_smooth() +
-  #geom_point() +
-  NULL
+```{r fig.height=7,fig.width=12,warning=FALSE,message=FALSE}
+lon_no2 <- london_air %>% summarise(date=date,London=no2)
+del_no2 <- delhi_air %>% summarise(date=date,New_Delhi=no2)
+zur_no2 <- zurich_air %>% summarise(date=date,Zurich=no2)
+no2_merged <- left_join(lon_no2,del_no2,by='date') 
+no2_merged <- left_join(no2_merged,zur_no2,by='date')%>% pivot_longer(cols=c(2:4),names_to="city",values_to="no2")%>% mutate(component = "NO2")
 
+plt4 <- ggplot(no2_merged) + 
+  geom_smooth(aes(x=date,y=no2,color=city)) +
+  labs(x="", y="Concentration (µg/m3)")+
+  facet_wrap(~ component) + 
+  theme_minimal()+
+  theme(strip.text.x = element_text(size = 16)) +
+theme(legend.position = "none",
+         strip.text.x = element_text(family = "Myanmar Text"),
+        strip.text.y = element_text(family = "Myanmar Text"),
+        strip.background = element_rect(fill="#E1E1E1"))
+
+lon_pm10 <- london_air %>% summarise(date=date,London=pm10)
+del_pm10 <- delhi_air %>% summarise(date=date,New_Delhi=pm10)
+zur_pm10 <- zurich_air %>% summarise(date=date,Zurich=pm10)
+pm10_merged <- left_join(lon_pm10,del_pm10,by='date') 
+pm10_merged <- left_join(pm10_merged,zur_pm10,by='date')%>% pivot_longer(cols=c(2:4),names_to="city",values_to="pm10")%>% mutate(component = "PM10")
+
+plt5 <- ggplot(pm10_merged) + 
+  geom_smooth(aes(x=date,y=pm10,color=city)) +
+  labs(x="", y="Concentration (µg/m3)")+
+  facet_wrap(~ component) + 
+  theme_minimal()+
+  theme(strip.text.x = element_text(size = 16)) +
+  theme( 
+         strip.text.x = element_text(family = "Myanmar Text"),
+        strip.text.y = element_text(family = "Myanmar Text"),
+        strip.background = element_rect(fill="#E1E1E1"))
+
+lon_pm25 <- london_air %>% summarise(date=date,London=pm25)
+del_pm25 <- delhi_air %>% summarise(date=date,New_Delhi=pm25)
+zur_pm25 <- zurich_air %>% summarise(date=date,Zurich=pm25)
+pm25_merged <- left_join(lon_pm25,del_pm25,by='date') 
+pm25_merged <- left_join(pm25_merged,zur_pm25,by='date')%>% pivot_longer(cols=c(2:4),names_to="city",values_to="pm25")%>% mutate(component = "PM25")
+
+plt6 <- ggplot(pm25_merged) + 
+  geom_smooth(aes(x=date,y=pm25,color=city)) +
+  labs(x="", y="Concentration (µg/m3)")+
+  facet_wrap(~ component) + 
+  theme_minimal()+
+  theme(strip.text.x = element_text(size = 16)) +
+  theme(legend.position = "none",
+         strip.text.x = element_text(family = "Myanmar Text"),
+        strip.text.y = element_text(family = "Myanmar Text"),
+        strip.background = element_rect(fill="#E1E1E1"))
+
+lon_so2 <- london_air %>% summarise(date=date,London=so2)
+del_so2 <- delhi_air %>% summarise(date=date,New_Delhi=so2)
+zur_so2 <- zurich_air %>% summarise(date=date,Zurich=so2)
+so2_merged <- left_join(lon_so2,del_so2,by='date') 
+so2_merged <- left_join(so2_merged,zur_so2,by='date')%>% pivot_longer(cols=c(2:4),names_to="city",values_to="so2")%>% mutate(component = "SO2")
+
+plt7 <- ggplot(so2_merged) + 
+  geom_smooth(aes(x=date,y=so2,color=city)) +
+  labs(x="", y="Concentration (µg/m3)")+
+  facet_wrap(~ component) + 
+  theme_minimal()+
+  theme(strip.text.x = element_text(size = 16)) +
+  theme(
+         strip.text.x = element_text(family = "Myanmar Text"),
+        strip.text.y = element_text(family = "Myanmar Text"),
+        strip.background = element_rect(fill="#E1E1E1"))
+
+plt4+plt5+plt6+plt7+
+  plot_annotation(title = "New Delhi has the most variable levels of pollutants throughout the year", subtitle = "Air quality data of London, New Delhi and Zürich over the past three years", caption="Aqicn.org") &
+    theme(
+    plot.title = element_text(face = "bold", size = 20, hjust = 0), 
+  #hjust is to adjust the position of the title
+    plot.subtitle = element_text(size = 16, hjust = 0) 
+    ) &
+      theme(
+    plot.title = element_text(face = "bold", size = 20, hjust = 0), 
+  #hjust is to adjust the position of the title
+    plot.subtitle = element_text(size = 16, hjust = 0) 
+    ) &
+  theme(panel.background = element_rect(fill = NA,color="black"),               # Remove gridlines
+        plot.title = element_text(family = "Myanmar Text",        # Change text format
+                                  face = "bold", 
+                                  size = 18),
+        plot.subtitle = element_text(family = "Myanmar Text",
+                                     size = 16),
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(family = "Myanmar Text"),
+        axis.title.y = element_text(family = "Myanmar Text"),
+        axis.text.y = element_text(family = "Myanmar Text"),
+        aspect.ratio = 3/5)
+
+```
+
+```{r fig.height=5,fig.width=12,warning=FALSE,message=FALSE}
+# some visualizations
+lon_pm25 <- lon_merged  %>% mutate(city ="London")
+plta <- ggplot(lon_pm25,aes(x=date,y=pm25,color=year))+
+  geom_smooth() +
+  geom_point() +
+  facet_wrap(~city)+
+  theme_minimal()+
+  theme(strip.text.x = element_text(size = 16)) +
+  theme(legend.position = "none") +
+  labs(x="")
+
+del_pm25 <- del_merged %>% mutate(city="New Delhi")
+pltb <- ggplot(del_pm25,aes(x=date,y=pm25,color=year)) +
+  geom_smooth() +
+  geom_point() +
+  facet_wrap(~city)+
+  theme_minimal()+
+  theme(strip.text.x = element_text(size = 16)) +
+  theme(legend.position = "none")+
+  labs(x="")
+
+zur_pm25 <- zur_merged %>% mutate(city="Zurich")
+pltc <- ggplot(zur_pm25,aes(x=date,y=pm25,color=year)) +
+  geom_smooth() +
+  geom_point() +
+  facet_wrap(~city)+
+  theme_minimal()+
+  theme(strip.text.x = element_text(size = 16)) +
+  labs(x="")
+
+plta+pltb+pltc+
+  plot_annotation(title = " ", subtitle = "PM2.5 data of London, New Delhi and Zürich over the past three years", caption="Aqicn.org") &
+    theme(
+    plot.title = element_text(face = "bold", size = 20, hjust = 0), 
+  #hjust is to adjust the position of the title
+    plot.subtitle = element_text(size = 16, hjust = 0) 
+    ) 
+```
+
+```{r fig.height=5,fig.width=12,warning=FALSE,message=FALSE}
+lon_long <- lon_merged %>%
+  pivot_longer(cols=c(9:14),names_to="type",values_to="percent") %>% filter(date>=as.Date("2020-02-15")) 
 del_long <- del_merged %>% pivot_longer(cols=c(9:14),names_to="type",values_to="percent") %>% filter(date>=as.Date("2020-02-15"))
-del_long %>% ggplot(aes(x=date,y=percent,color=type)) +
-  geom_smooth()
-
 zur_long <- zur_merged %>% pivot_longer(cols=c(15:20),names_to="type",values_to="percent") %>% filter(date>=as.Date("2020-02-15"))
-zur_long %>% ggplot(aes(x=date,y=percent,color=type)) +
-  geom_smooth()
+
+lon_mob <- lon_long %>% mutate (city = "London")
+
+plt8 <- ggplot(lon_mob) + 
+  geom_smooth(aes(x=date,y=percent,color=type)) +
+  labs(x="", y="Percent change from baseline")+
+  facet_wrap(~ city) + 
+  theme_minimal()+
+  theme(strip.text.x = element_text(size = 16)) +
+  theme(legend.position = "none") +
+   theme(
+         strip.text.x = element_text(family = "Myanmar Text"),
+        strip.text.y = element_text(family = "Myanmar Text"),
+        strip.background = element_rect(fill="#E1E1E1"))
+
+del_mob <- del_long %>% mutate (city = "New Delhi")
+
+plt9 <- ggplot(del_mob) + 
+  geom_smooth(aes(x=date,y=percent,color=type)) +
+  labs(x="", y="Percent change from baseline")+
+  facet_wrap(~ city) + 
+  theme_minimal()+
+  theme(strip.text.x = element_text(size = 16)) +
+  theme(legend.position = "none") +
+   theme(
+         strip.text.x = element_text(family = "Myanmar Text"),
+        strip.text.y = element_text(family = "Myanmar Text"),
+        strip.background = element_rect(fill="#E1E1E1"))
+
+zur_mob <- zur_merged %>%
+  summarise(
+    date = date,
+    Retail = retail_and_recreation_percent_change_from_baseline,
+    Grocery = grocery_and_pharmacy_percent_change_from_baseline,
+    Parks = parks_percent_change_from_baseline,
+    Transit = transit_stations_percent_change_from_baseline,
+    Workplaces = workplaces_percent_change_from_baseline,
+    Residential = residential_percent_change_from_baseline
+  ) %>%pivot_longer(cols=c(2:7),names_to="type",values_to="percent") %>%filter(date>=as.Date("2020-02-15")) %>% mutate (city = "Zurich")
+
+plt10 <- ggplot(zur_mob) + 
+  geom_smooth(aes(x=date,y=percent,color=type)) +
+  labs(x="", y="Percent change from baseline")+
+  facet_wrap(~ city) + 
+  theme_minimal()+
+  theme(strip.text.x = element_text(size = 16)) +
+   theme(
+         strip.text.x = element_text(family = "Myanmar Text"),
+        strip.text.y = element_text(family = "Myanmar Text"),
+        strip.background = element_rect(fill="#E1E1E1"))
+
+plt8+plt9+plt10+
+  plot_annotation(title = "Mobility Patterns Differed By City", subtitle = "Mobility quality data of London, New Delhi and Zürich since 15th Feberary", caption="Google") &
+
+      theme(
+  panel.background = element_rect(fill = NA,color="black"),               # Remove gridlines
+        plot.title = element_text(family = "Myanmar Text",        # Change text format
+                                  face = "bold", 
+                                  size = 18),
+        plot.subtitle = element_text(family = "Myanmar Text",
+                                     size = 16),
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(family = "Myanmar Text"),
+        axis.title.y = element_text(family = "Myanmar Text"),
+        axis.text.y = element_text(family = "Myanmar Text"),
+        aspect.ratio = 3/5)
+
 
 ```
 
-```{r}
+```{r fig.height = 10, fig.width = 12, warning = FALSE, message = FALSE}
 # attempt one at percent change
 del_pm2_averages <- del_merged %>% filter(year!=2020) %>% mutate(month=month(date),day=day(date)) %>% group_by(month,day) %>% summarise(base_pm25=mean(pm25))
 
@@ -195,56 +435,132 @@ del_long <- del_long %>% mutate(month=month(date),day=day(date)) %>%
 lon_pm2_averages <- lon_merged %>% filter(year!=2020) %>% mutate(month=month(date),day=day(date)) %>% group_by(month,day) %>% summarise(base_pm25=mean(pm25))
 
 lon_long <- lon_long %>% mutate(month=month(date),day=day(date)) %>%
-  merge(.,del_pm2_averages,by=c("month","day")) %>%
+  merge(.,lon_pm2_averages,by=c("month","day")) %>%
   mutate(per_change_pm25=(pm25-base_pm25)/base_pm25*100)
 
 zur_pm2_averages <- zur_merged %>% filter(year!=2020) %>%
   mutate(month=month(date),day=day(date)) %>% group_by(month,day) %>% summarise(base_pm25=mean(pm25))
+
 zur_long <- zur_long %>% mutate(month=month(date),day=day(date)) %>%
-  merge(.,del_pm2_averages,by=c("month","day")) %>%
+  merge(.,zur_pm2_averages,by=c("month","day")) %>%
   mutate(per_change_pm25=(pm25-base_pm25)/base_pm25*100)
 
+lon_pm25_change <- lon_long %>% summarise(date=date,London=per_change_pm25)
+del_pm25_change <- del_long %>% summarise(date=date,New_Delhi=per_change_pm25)
+zur_pm25_change <- zur_long %>% summarise(date=date,Zurich=per_change_pm25)
+pm25_change_merged <- left_join(lon_pm25_change,del_pm25_change,by='date') 
+pm25_change_merged <- left_join(pm25_change_merged,zur_pm25_change,by='date')%>% pivot_longer(cols=c(2:4),names_to="city",values_to="per_change_pm25") %>% mutate(month=month(date))%>%
+group_by(month,city)%>% summarise(mean_change_pm25 = mean(per_change_pm25))
+
+plt11 <- ggplot(pm25_change_merged,aes(x=as.factor(month),y=mean_change_pm25)) +
+  geom_bar(stat="identity",aes(color=city,fill=city))+
+  labs(x="", y="Percent change of PM25 from baseline")+
+  facet_wrap(~city) +
+  theme_minimal()+
+  theme(strip.text.x = element_text(size = 16)) +
+  labs(title ="Percent change of PM2.5 from baseline in 2020", subtitle = "PM2.5 data of London, New Delhi and Zürich at 2020") +
+  scale_x_discrete(breaks= c(2:12),labels= c("Feb", "Mar", "Apr","May", "Jun","July","Aug","Sep","Oct","Nov","Dec"))+
+  theme(
+    plot.title = element_text(face = "bold", size = 20, hjust = 0), 
+  #hjust is to adjust the position of the title
+    plot.subtitle = element_text(size = 16, hjust = 0) 
+    ) +
+    theme(legend.position = "none")
+
+
+lon_pm25 <- lon_long %>% summarise(date=date,London=pm25)
+del_pm25 <- del_long %>% summarise(date=date,New_Delhi=pm25)
+zur_pm25 <- zur_long %>% summarise(date=date,Zurich=pm25)
+pm25_merged <- left_join(lon_pm25,del_pm25,by='date') 
+pm25_merged <- left_join(pm25_merged,zur_pm25,by='date')%>% pivot_longer(cols=c(2:4),names_to="city",values_to="pm25") %>% mutate(year = year(date),month=month(date))%>%filter(year==2020)%>%
+group_by(year,month,city)%>% summarise(mean_pm25 = mean(pm25))
+
+plt12 <- ggplot(pm25_merged,aes(x=as.factor(month),y=mean_pm25,label=round(mean_pm25,2))) +
+  geom_bar(stat="identity",aes(color=city,fill=city))+
+  geom_text(vjust = 0) + # add figures on each column
+  labs(x="", y="Mean PM2.5 concentration")+
+  coord_flip()+
+  facet_wrap(~city,scales = "free") +
+  theme_minimal()+
+  theme(strip.text.x = element_text(size = 16)) +
+  labs(title ="Mean PM2.5 concentration in 2020") +
+  scale_x_discrete(breaks= c(2:12),labels= c("Feb", "Mar", "Apr","May", "Jun","July","Aug","Sep","Oct","Nov","Dec"))+
+  theme(
+    plot.title = element_text(face = "bold", size = 20, hjust = 0), 
+  #hjust is to adjust the position of the title
+    plot.subtitle = element_text(size = 16, hjust = 0) 
+    ) +
+    theme(legend.position = "none")
+
+
+plt11/plt12 +
+   
+    theme(
+    plot.title = element_text(face = "bold", size = 20, hjust = 0), 
+  #hjust is to adjust the position of the title
+    plot.subtitle = element_text(size = 16, hjust = 0) )
+
 ```
-
-
-```{r}
-# attempt 2
-del_merged2 <- del_merged %>% arrange(date) %>% mutate(prior_yr_pm25=lag(pm25,365),change_pm25=(pm25-prior_yr_pm25)/prior_yr_pm25*100)
-
-lon_merged2 <- lon_merged %>% arrange(date) %>% mutate(prior_yr_pm25=lag(pm25,365),change_pm25=(pm25-prior_yr_pm25)/prior_yr_pm25*100)
-
-zur_merged2 <- zur_merged %>% arrange(date) %>% mutate(prior_yr_pm25=lag(pm25,365),change_pm25=(pm25-prior_yr_pm25)/prior_yr_pm25*100)
-
-```
-
-
-
 ```{r}
 # plot pm2 vs workplace percent change
-del_long2 <- del_merged2 %>% pivot_longer(cols=c(9:14),names_to="type",values_to="percent") %>% filter(date>=as.Date("2020-02-15"))
-del_long2 %>% 
-  ggplot(aes(y=change_pm25,x=percent)) +
+
+del_long %>% 
+  filter(date>=as.Date("2020-05-01")) %>% 
+  ggplot(aes(y=per_change_pm25,x=percent)) +
   geom_smooth() + facet_wrap(~type,scales = "free")
 
 
-lon_long2 <- lon_merged2 %>% pivot_longer(cols=c(9:14),names_to="type",values_to="percent") %>% filter(date>=as.Date("2020-02-15"))
-lon_long2 %>% 
-  ggplot(aes(y=change_pm25,x=percent)) +
+
+lon_long %>% 
+  filter(date>=as.Date("2020-05-01")) %>% 
+  ggplot(aes(y=per_change_pm25,x=percent)) +
   geom_smooth() + facet_wrap(~type,scales = "free")
 
-zur_long2 <- zur_merged2 %>% pivot_longer(cols=c(15:20),names_to="type",values_to="percent") %>% filter(date>=as.Date("2020-02-15"))
-zur_long2 %>% 
-  ggplot(aes(y=change_pm25,x=percent)) +
+
+zur_long %>% 
+  filter(date>=as.Date("2020-05-01")) %>% 
+  ggplot(aes(y=per_change_pm25,x=percent)) +
   geom_smooth() + facet_wrap(~type,scales = "free")
 
 
 ```
 
+```{r}
+del_merged <- del_merged %>% mutate(month=month(date),day=day(date)) %>%
+  merge(.,del_pm2_averages,by=c("month","day")) %>%
+  mutate(per_change_pm25=(pm25-base_pm25)/base_pm25*100)
+del_merged %>% 
+  #filter(date>=as.Date("2020-01-01")) %>%
+  ggplot(aes(y=per_change_pm25,x=date)) +
+  geom_smooth()
 
-```{r lm}
+lon_merged <- lon_merged %>% mutate(month=month(date),day=day(date)) %>%
+  merge(.,del_pm2_averages,by=c("month","day")) %>%
+  mutate(per_change_pm25=(pm25-base_pm25)/base_pm25*100)
+lon_merged %>% 
+  #filter(date>=as.Date("2020-01-01")) %>%
+  ggplot(aes(y=per_change_pm25,x=date)) +
+  geom_smooth()
+
+
+zur_merged <- zur_merged %>% mutate(month=month(date),day=day(date)) %>%
+  merge(.,del_pm2_averages,by=c("month","day")) %>%
+  mutate(per_change_pm25=(pm25-base_pm25)/base_pm25*100)
+zur_merged %>% 
+  #filter(date>=as.Date("2020-01-01")) %>%
+  ggplot(aes(y=per_change_pm25,x=date)) +
+  geom_smooth()
+```
+
+# Regression
+
+```{r warning = FALSE}
+
+# CHANGES: no2 instead of pm25, and changed data set for delhi (was lon_merged now del_meged)
+
 #zurich
 m1 <- zur_merged %>% mutate(month=month(date)) %>% 
-  lm(pm25 ~ retail_and_recreation_percent_change_from_baseline+
+  lm(no2 ~ retail_and_recreation_percent_change_from_baseline+
      grocery_and_pharmacy_percent_change_from_baseline+
      transit_stations_percent_change_from_baseline+
      parks_percent_change_from_baseline+
@@ -252,23 +568,25 @@ m1 <- zur_merged %>% mutate(month=month(date)) %>%
      residential_percent_change_from_baseline+
        month,na.action=na.omit,data=.)
 
-summary(m1)
+summary(m1) # Adjusted R2: 0.1808
+# Most significant parameters: intercept , residential , month
 
 #london
-m2 <- lon_merged %>% mutate(month=month(date)) %>% 
-  lm(pm25 ~ retail_and_recreation_percent_change_from_baseline+
-     grocery_and_pharmacy_percent_change_from_baseline+
-     transit_stations_percent_change_from_baseline+
-     parks_percent_change_from_baseline+
-     workplaces_percent_change_from_baseline+
-     residential_percent_change_from_baseline+
-       month,na.action=na.omit,data=.)
+#m2 <- lon_merged %>% mutate(month=month(date)) %>% 
+#  lm(no2 ~ retail_and_recreation_percent_change_from_baseline+
+#     grocery_and_pharmacy_percent_change_from_baseline+
+#     transit_stations_percent_change_from_baseline+
+#     parks_percent_change_from_baseline+
+#     workplaces_percent_change_from_baseline+
+#     residential_percent_change_from_baseline+
+#       month,na.action=na.omit,data=.)
 
-summary(m2)
+#summary(m2) # Adjusted R2: 0.5793
+# Most significant parameters: intercept - only other significant param is grocery_and_pharmacy
 
 #delhi
-m3 <- lon_merged %>% mutate(month=month(date)) %>% 
-  lm(pm25 ~ retail_and_recreation_percent_change_from_baseline+
+m3 <- del_merged %>% mutate(month=month(date)) %>% 
+  lm(no2 ~ retail_and_recreation_percent_change_from_baseline+
      grocery_and_pharmacy_percent_change_from_baseline+
      transit_stations_percent_change_from_baseline+
      parks_percent_change_from_baseline+
@@ -276,136 +594,29 @@ m3 <- lon_merged %>% mutate(month=month(date)) %>%
      residential_percent_change_from_baseline+
        month,na.action=na.omit,data=.)
 
-summary(m3)
+summary(m3) # Adjusted R2: 0.4941
+# Most significant parameters: intercept , retail_and_recreation , parks , month
 
 ```
 
-```{r tree}
-#maybe try with log prices
+# Random Forest
+```{r, rf_delhi,fig.height=5,fig.width=8}
+
+# CHANGED: whole chunk
 library(caret)
 library(rpart.plot)
 
-
-# delhi
-set.seed(1234)
-control <- trainControl (
-    method="cv",
-    number=5,
-    verboseIter=TRUE)
-merged_nona <- del_merged %>% mutate(month=month(date))
-tree_delhi <- train(
-  pm25 ~ retail_and_recreation_percent_change_from_baseline+
-     grocery_and_pharmacy_percent_change_from_baseline+
-     transit_stations_percent_change_from_baseline+
-     parks_percent_change_from_baseline+
-     workplaces_percent_change_from_baseline+
-     residential_percent_change_from_baseline+
-    month,
-  merged_nona,
-  method = "rpart",
-  na.action = na.omit,
-  trControl = control,
-  tuneLength=10
-    )
-
-#You can view how the tree performs
-tree_delhi$results
-
-#You can view the final tree
-rpart.plot(tree_delhi$finalModel)
-
-#you can also visualize the variable importance
-importance <- varImp(tree_delhi, scale=TRUE)
-plot(importance)
-
-```
-
-```{r}
-
-# london
-set.seed(1234)
-control <- trainControl (
-    method="cv",
-    number=5,
-    verboseIter=TRUE)
-merged_nona <- lon_merged %>% mutate(month=month(date))
-md.pattern(merged_nona,rotate.names = T)
-
-tree_lon <- train(
-  pm25 ~ retail_and_recreation_percent_change_from_baseline+
-     grocery_and_pharmacy_percent_change_from_baseline+
-     transit_stations_percent_change_from_baseline+
-     parks_percent_change_from_baseline+  
-     workplaces_percent_change_from_baseline+
-     month+
-     residential_percent_change_from_baseline
-  ,
-  merged_nona,
-  method = "rpart",
-  na.action = na.omit,
-  trControl = control,
-  tuneLength=10
-    )
-
-#You can view how the tree performs
-tree_lon$results
-
-#You can view the final tree
-rpart.plot(tree_lon$finalModel)
-
-#you can also visualize the variable importance
-importance <- varImp(tree_lon, scale=TRUE)
-plot(importance)
-
-
-```
-
-```{r}
-# zurich
-set.seed(1234)
-control <- trainControl (
-    method="cv",
-    number=5,
-    verboseIter=TRUE)
-merged_nona <- zur_merged %>% mutate(month=month(date))
-tree_zur <- train(
-  pm25 ~ retail_and_recreation_percent_change_from_baseline+
-     grocery_and_pharmacy_percent_change_from_baseline+
-     transit_stations_percent_change_from_baseline+
-     parks_percent_change_from_baseline+
-     workplaces_percent_change_from_baseline+
-     residential_percent_change_from_baseline+
-    month,
-  merged_nona,
-  method = "rpart",
-  na.action = na.omit,
-  trControl = control,
-  tuneLength=10
-    )
-
-#You can view how the tree performs
-tree_zur$results
-
-#You can view the final tree
-rpart.plot(tree_zur$finalModel)
-
-#you can also visualize the variable importance
-importance <- varImp(tree_zur, scale=TRUE)
-plot(importance)
-
-
-```
-```{r}
 train_control <- trainControl (
     method="cv",
     number=5,
     verboseIter=TRUE)
 
 library(GGally)
-merged_nona %>% ggcorr(layout.position="left")
+
 set.seed(1234)
 # Fit random forest: model
 merged_nona <- del_merged %>% mutate(month=month(date))
+merged_nona %>% ggcorr(layout.position="left")
 rf_RF <- train(
    no2 ~ retail_and_recreation_percent_change_from_baseline+
      grocery_and_pharmacy_percent_change_from_baseline+
@@ -430,17 +641,39 @@ rf_RF$bestTune
 importance <- varImp(rf_RF, scale=TRUE)
 importance
 varImps <- importance$importance %>% rownames_to_column()
-varImps %>% ggplot(aes(x=reorder(rowname,-Overall),y=Overall)) +
-  geom_col() +
-  scale_x_discrete(labels=c("Retail & Recreation","Month","Workplaces",
-                            "Residential","Grocery & Pharmacy","Transit Stations"))+
-  theme_minimal() +
-  labs(title="Delhi: Which Factors Effect PM25 The Most?",y="Feature Importance",x="Category")
+# Plot variable inportance bar chart
+varImps %>% ggplot(aes(x = reorder(rowname,-Overall),
+                       y = Overall)) +
+  geom_col(fill = "#74AEDB",
+           color = "#4F96CD") +
+  scale_x_discrete(labels=c("Month","Retail & Recreation","Transit Stations",
+                            "Residential","Grocery & Pharmacy","Workplaces"))+
+  theme_classic() +
+  labs(title = "New Delhi's air quality was predominantly influenced by the time of the year rather than 
+changes in mobility",
+       subtitle = "Feature importance of mobility categories and month towards levels of NO2 in 2020",
+       y = "Feature importance weight", 
+       x = "") +
+  theme(panel.background = element_rect(fill = NA),               # Remove gridlines
+        plot.title = element_text(        # Change text format
+                                  face = "bold", 
+                                  size = 12),
+        plot.subtitle = element_text(
+                                     size = 10),
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(),
+        axis.title.y = element_text(),
+        axis.text.y = element_text(),
+        aspect.ratio = 3/5)
+
 ```
 
 
 
-```{r rf}
+```{r rf_london}
+
+# CHANGED: whole chunk
+
 train_control <- trainControl (
     method="cv",
     number=5,
@@ -474,26 +707,49 @@ rf_RF$bestTune
 importance <- varImp(rf_RF, scale=TRUE)
 importance
 varImps <- importance$importance %>% rownames_to_column()
-varImps %>% ggplot(aes(x=reorder(rowname,-Overall),y=Overall)) +
-  geom_col() +
-  scale_x_discrete(labels=c("Retail & Recreation","Month","Workplaces",
-                            "Residential","Grocery & Pharmacy","Transit Stations"))+
-  theme_minimal() +
-  labs(title="London: Which Factors Effect PM25 The Most?",y="Weight",x="Category")
+# Plot variable inportance bar chart
+varImps %>% ggplot(aes(x = reorder(rowname,-Overall),
+                       y = Overall)) +
+  geom_col(fill = "#74AEDB",
+           color = "#4F96CD") +
+  scale_x_discrete(labels=c("Workplaces", "Transit Stations", "Retail & Recreation", "Residential", "Month", "Grocery & Pharmacy")) +
+  theme_classic() +
+  labs(title = "London's air quality was highly affected by mobility patterns rather than the month",
+       subtitle = "Feature importance of mobility categories and month towards levels of NO2 in 2020",
+       y = "Feature importance weight", 
+       x = "") +
+  theme(panel.background = element_rect(fill = NA),               # Remove gridlines
+        plot.title = element_text(,        # Change text format
+                                  face = "bold", 
+                                  size = 12),
+        plot.subtitle = element_text(,
+                                     size = 10),
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(),
+        axis.title.y = element_text(),
+        axis.text.y = element_text())
+
 ```
-```{r}
-set.seed(1234)
-# Fit random forest: model
+```{r, rf_zurich}
+
+# CHANGED: whole chunk
+
+train_control <- trainControl (
+    method="cv",
+    number=5,
+    verboseIter=TRUE)
 
 merged_nona %>% ggcorr(layout.position="left")
+set.seed(1234)
+# Fit random forest: model
 merged_nona <- zur_merged %>% mutate(month=month(date))
 rf_RF <- train(
-   no2 ~ retail_and_recreation_percent_change_from_baseline+
-     grocery_and_pharmacy_percent_change_from_baseline+
-     transit_stations_percent_change_from_baseline+
-     retail_and_recreation_percent_change_from_baseline+
-     workplaces_percent_change_from_baseline+
-     residential_percent_change_from_baseline+
+   no2 ~ retail_and_recreation_percent_change_from_baseline +
+     grocery_and_pharmacy_percent_change_from_baseline +
+     transit_stations_percent_change_from_baseline +
+     retail_and_recreation_percent_change_from_baseline +
+     workplaces_percent_change_from_baseline +
+     residential_percent_change_from_baseline +
     month,
   merged_nona, 
   method = "ranger",
@@ -509,7 +765,30 @@ rf_RF$results
 rf_RF$bestTune
 
 importance <- varImp(rf_RF, scale=TRUE)
-plot(importance)
+importance
+varImps <- importance$importance %>% rownames_to_column()
+# Plot variable inportance bar chart
+varImps %>% ggplot(aes(x = reorder(rowname,-Overall),
+                       y = Overall)) +
+  geom_col(fill = "#74AEDB",
+           color = "#4F96CD") +
+  scale_x_discrete(labels=c("Month","Retail & Recreation", "Transit Stations", "Residential",  "Workplaces", "Grocery & Pharmacy")) +
+  theme_classic() +
+  labs(title = "Zurich's air quality stayed largely unaffected by changes in mobility",
+       subtitle = "Feature importance of mobility categories and month towards levels of NO2 in 2020",
+       y = "Feature importance weight", 
+       x = "") +
+  theme(panel.background = element_rect(fill = NA),               # Remove gridlines
+        plot.title = element_text(,        # Change text format
+                                  face = "bold", 
+                                  size = 12),
+        plot.subtitle = element_text(,
+                                     size = 10),
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(),
+        axis.title.y = element_text(),
+        axis.text.y = element_text())
+
 ```
 
 
